@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anomaly Detection in Pen Production — RVCE MCA</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+  :root {
+    --bg: #08090d;
+    --bg2: #0f1117;
+    --bg3: #151821;
+    --surface: #1a1e2e;
+    --border: #252a3d;
+    --accent: #e8ff47;
+    --accent2: #47c8ff;
+    --accent3: #ff6b47;
+    --text: #e8eaf2;
+    --muted: #7a80a0;
+    --card: #131622;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* ── NAVBAR ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 3rem;
+    background: rgba(8,9,13,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-family: 'Space Mono', monospace;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--accent); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    padding: 6rem 2rem 4rem;
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(232,255,71,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,255,71,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridPulse 8s ease-in-out infinite;
+  }
+
+  @keyframes gridPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .hero-glow {
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,255,71,0.06) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    animation: glowPulse 6s ease-in-out infinite;
+  }
+
+  @keyframes glowPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+    50% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 900px;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    background: rgba(232,255,71,0.1);
+    border: 1px solid rgba(232,255,71,0.3);
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.4rem 1rem;
+    border-radius: 2rem;
+    letter-spacing: 0.12em;
+    margin-bottom: 2rem;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.8rem, 6vw, 5.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.5rem;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  .hero h1 span {
+    color: transparent;
+    -webkit-text-stroke: 1px var(--accent);
+  }
+
+  .hero-sub {
+    color: var(--muted);
+    font-size: 1.05rem;
+    max-width: 600px;
+    margin: 0 auto 2.5rem;
+    font-weight: 300;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  /* College info card */
+  .hero-meta {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 2rem;
+    align-items: center;
+    max-width: 700px;
+    margin: 2rem auto 0;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+
+  .meta-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.5rem;
+    text-align: left;
+  }
+
+  .meta-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .meta-value {
+    font-size: 0.88rem;
+    color: var(--text);
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .meta-divider {
+    width: 1px;
+    height: 80px;
+    background: linear-gradient(to bottom, transparent, var(--border), transparent);
+  }
+
+  .rvce-logo-area {
+    text-align: center;
+    margin-bottom: 3rem;
+    animation: fadeUp 0.6s 0.4s ease both;
+  }
+
+  .rvce-logo-circle {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--surface), var(--bg3));
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+    font-family: 'Syne', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+    box-shadow: 0 0 40px rgba(232,255,71,0.08);
+  }
+
+  .college-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+
+  .college-dept {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 0.2rem;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── SCROLL INDICATOR ── */
+  .scroll-hint {
+    position: absolute;
+    bottom: 2rem; left: 50%;
+    transform: translateX(-50%);
+    display: flex; flex-direction: column;
+    align-items: center; gap: 0.5rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    animation: bounce 2s ease-in-out infinite;
+    z-index: 2;
+  }
+
+  .scroll-hint svg { animation: arrowBounce 2s ease-in-out infinite; }
+
+  @keyframes arrowBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
+  }
+
+  /* ── SECTION BASE ── */
+  section {
+    padding: 6rem 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .section-tag::before {
+    content: '';
+    display: block;
+    width: 24px; height: 1px;
+    background: var(--accent);
+  }
+
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+  }
+
+  .section-intro {
+    color: var(--muted);
+    font-size: 1rem;
+    max-width: 620px;
+    margin-bottom: 3rem;
+    font-weight: 300;
+  }
+
+  /* ── PIPELINE OVERVIEW ── */
+  .pipeline {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 5rem 2rem;
+  }
+
+  .pipeline-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .pipeline-steps {
+    display: flex;
+    gap: 0;
+    margin-top: 3rem;
+    position: relative;
+  }
+
+  .pipeline-steps::before {
+    content: '';
+    position: absolute;
+    top: 28px; left: 44px; right: 44px; height: 1px;
+    background: linear-gradient(to right, var(--accent), var(--accent2), var(--accent3));
+    z-index: 0;
+  }
+
+  .pipeline-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    padding: 0 0.5rem;
+    cursor: pointer;
+    transition: transform 0.25s;
+  }
+
+  .pipeline-step:hover { transform: translateY(-4px); }
+
+  .step-num {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--bg3);
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    transition: all 0.25s;
+    position: relative;
+  }
+
+  .pipeline-step:hover .step-num,
+  .pipeline-step.active .step-num {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    box-shadow: 0 0 24px rgba(232,255,71,0.4);
+  }
+
+  .step-label {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  /* ── DATASET SECTION ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(to right, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .stat-card:hover {
+    border-color: rgba(232,255,71,0.3);
+    transform: translateY(-3px);
+  }
+
+  .stat-card:hover::before { opacity: 1; }
+
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  /* Classes visual */
+  .classes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .class-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    display: flex; gap: 1.5rem;
+    align-items: flex-start;
+    transition: all 0.3s;
+  }
+
+  .class-card:hover {
+    border-color: rgba(71,200,255,0.3);
+    transform: translateY(-2px);
+  }
+
+  .class-icon {
+    width: 56px; height: 56px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+  }
+
+  .class-icon.capped { background: rgba(71,200,255,0.1); border: 1px solid rgba(71,200,255,0.2); }
+  .class-icon.uncapped { background: rgba(255,107,71,0.1); border: 1px solid rgba(255,107,71,0.2); }
+
+  .class-info h3 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .class-badge {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+
+  .badge-0 { background: rgba(255,107,71,0.15); color: var(--accent3); }
+  .badge-1 { background: rgba(71,200,255,0.15); color: var(--accent2); }
+
+  .class-info p { color: var(--muted); font-size: 0.88rem; font-weight: 300; }
+
+  /* Data split visual */
+  .split-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-top: 2rem;
+  }
+
+  .split-label-row {
+    display: flex; justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+
+  .split-label { font-size: 0.82rem; color: var(--muted); font-family: 'Space Mono', monospace; }
+  .split-val { font-family: 'Space Mono', monospace; font-size: 0.82rem; }
+  .split-val.train { color: var(--accent); }
+  .split-val.val { color: var(--accent2); }
+
+  .split-track {
+    height: 12px;
+    border-radius: 8px;
+    background: var(--surface);
+    overflow: hidden;
+    display: flex;
+  }
+
+  .split-fill-train {
+    height: 100%;
+    background: linear-gradient(to right, var(--accent), rgba(232,255,71,0.6));
+    border-radius: 8px 0 0 8px;
+    width: 80%;
+    transition: width 1s ease;
+  }
+
+  .split-fill-val {
+    height: 100%;
+    background: linear-gradient(to right, rgba(71,200,255,0.6), var(--accent2));
+    border-radius: 0 8px 8px 0;
+    width: 20%;
+  }
+
+  /* ── ROBOFLOW ── */
+  .roboflow-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .rf-step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.8rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .rf-step:hover {
+    border-color: rgba(232,255,71,0.25);
+    transform: translateY(-2px);
+  }
+
+  .rf-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+    opacity: 0.7;
+  }
+
+  .rf-step h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .rf-step p { color: var(--muted); font-size: 0.85rem; font-weight: 300; line-height: 1.6; }
+
+  .bbox-demo {
+    background: var(--surface);
+    border-radius: 10px;
+    margin-top: 1rem;
+    padding: 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent2);
+    line-height: 1.8;
+  }
+
+  /* ── CODE SECTION ── */
+  .code-section {
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+    padding: 6rem 2rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .code-inner { max-width: 1100px; margin: 0 auto; }
+
+  .code-tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+  }
+
+  .code-tab {
+    padding: 0.75rem 1.5rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    background: none; border-top: none; border-left: none; border-right: none;
+  }
+
+  .code-tab:hover { color: var(--text); }
+  .code-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .code-panel {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    overflow: hidden;
+  }
+
+  .code-panel.active { display: block; }
+
+  .code-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.75rem 1.25rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-filename {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .code-dots {
+    display: flex; gap: 6px;
+  }
+
+  .code-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+
+  .code-dot:nth-child(1) { background: #ff5f56; }
+  .code-dot:nth-child(2) { background: #ffbd2e; }
+  .code-dot:nth-child(3) { background: #27c93f; }
+
+  .code-panel pre {
+    margin: 0;
+    max-height: 520px;
+    overflow-y: auto;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  .code-panel pre::-webkit-scrollbar { width: 6px; }
+  .code-panel pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .code-panel code {
+    font-family: 'Space Mono', monospace !important;
+  }
+
+  /* ── TRAINING SECTION ── */
+  .training-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .training-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    transition: all 0.3s;
+  }
+
+  .training-card:hover {
+    border-color: rgba(71,200,255,0.25);
+    transform: translateY(-2px);
+  }
+
+  .training-card h3 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.3rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .training-card p { color: var(--muted); font-size: 0.85rem; font-weight: 300; line-height: 1.6; }
+
+  .param-list {
+    margin-top: 1rem;
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+
+  .param-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.4rem 0.75rem;
+    background: var(--surface);
+    border-radius: 6px;
+  }
+
+  .param-key { color: var(--muted); }
+  .param-val { color: var(--accent); }
+
+  /* Architecture diagram */
+  .arch-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-top: 1.5rem;
+  }
+
+  .arch-flow {
+    display: flex; align-items: center; gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+  }
+
+  .arch-node {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text);
+    white-space: nowrap;
+    transition: all 0.3s;
+  }
+
+  .arch-node:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .arch-node.highlight {
+    background: rgba(232,255,71,0.08);
+    border-color: rgba(232,255,71,0.4);
+    color: var(--accent);
+  }
+
+  .arch-arrow {
+    color: var(--muted);
+    font-size: 1rem;
+  }
+
+  /* ── SAFETY FEATURES ── */
+  .safety-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+  }
+
+  .safety-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .safety-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(to right, var(--accent), transparent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s;
+  }
+
+  .safety-card:hover { transform: translateY(-3px); }
+  .safety-card:hover::after { transform: scaleX(1); }
+
+  .safety-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .safety-card h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .safety-card p { color: var(--muted); font-size: 0.85rem; font-weight: 300; line-height: 1.6; }
+
+  /* ── YAML BLOCK ── */
+  .yaml-block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 2rem;
+  }
+
+  .yaml-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.75rem 1.25rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  .yaml-header span { color: var(--accent2); }
+
+  /* ── CLASSIFICATION FLOW ── */
+  .classify-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 2.5rem;
+    max-width: 700px;
+    margin-left: auto; margin-right: auto;
+  }
+
+  .flow-step {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    padding: 1.5rem 0;
+    border-left: 2px solid var(--border);
+    padding-left: 2rem;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+
+  .flow-step:hover { border-color: var(--accent); }
+
+  .flow-step::before {
+    content: '';
+    position: absolute;
+    left: -6px; top: 1.75rem;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+
+  .flow-step:hover::before {
+    background: var(--accent);
+    box-shadow: 0 0 12px rgba(232,255,71,0.4);
+  }
+
+  .flow-icon {
+    width: 44px; height: 44px;
+    background: var(--surface);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .flow-content h3 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .flow-content p { color: var(--muted); font-size: 0.85rem; font-weight: 300; line-height: 1.6; }
+
+  /* Threshold viz */
+  .threshold-viz {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-top: 2rem;
+  }
+
+  .threshold-track {
+    height: 10px;
+    background: var(--surface);
+    border-radius: 8px;
+    position: relative;
+    margin: 1.5rem 0;
+  }
+
+  .threshold-fill {
+    height: 100%;
+    background: linear-gradient(to right, var(--accent3), var(--accent), var(--accent2));
+    border-radius: 8px;
+    width: 15%;
+  }
+
+  .threshold-marker {
+    position: absolute;
+    top: -6px; left: 15%;
+    width: 2px; height: 22px;
+    background: var(--accent);
+  }
+
+  .threshold-label {
+    position: absolute;
+    top: -24px; left: 12%;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+  }
+
+  /* ── OUTPUT EXAMPLES ── */
+  .output-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+  }
+
+  .output-card {
+    background: var(--card);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+
+  .output-card:hover { transform: translateY(-2px); border-color: rgba(71,200,255,0.3); }
+
+  .output-header {
+    padding: 0.6rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .output-dot-warn { width: 8px; height: 8px; border-radius: 50%; background: var(--accent3); }
+  .output-dot-ok { width: 8px; height: 8px; border-radius: 50%; background: #27c93f; }
+
+  .output-body {
+    padding: 1.25rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 2;
+  }
+
+  .out-dim { color: var(--muted); }
+  .out-warn { color: var(--accent3); font-weight: 700; }
+  .out-ok { color: #27c93f; }
+  .out-conf { color: var(--accent); }
+  .out-info { color: var(--accent2); }
+
+  /* ── TEAM ── */
+  .team-section {
+    padding: 6rem 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    max-width: 700px;
+    margin: 3rem auto 0;
+  }
+
+  .team-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .team-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(to right, var(--accent2), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .team-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(71,200,255,0.3);
+  }
+
+  .team-card:hover::before { opacity: 1; }
+
+  .team-avatar {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--surface), var(--bg3));
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.2rem;
+    color: var(--accent2);
+    margin: 0 auto 1rem;
+  }
+
+  .team-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .team-usn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  .guides-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    max-width: 700px;
+    margin: 3rem auto 0;
+  }
+
+  .guide-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    display: flex; gap: 1rem; align-items: center;
+    transition: all 0.3s;
+  }
+
+  .guide-card:hover {
+    border-color: rgba(232,255,71,0.3);
+    transform: translateY(-2px);
+  }
+
+  .guide-icon {
+    width: 44px; height: 44px;
+    background: rgba(232,255,71,0.08);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .guide-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+
+  .guide-role {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 3rem 2rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-family: 'Space Mono', monospace;
+  }
+
+  footer strong { color: var(--accent); }
+
+  /* ── INTERACTIVE DEMO ── */
+  .demo-section {
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 6rem 2rem;
+  }
+
+  .demo-inner { max-width: 1100px; margin: 0 auto; }
+
+  .demo-terminal {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    font-family: 'Space Mono', monospace;
+    margin-top: 2.5rem;
+  }
+
+  .terminal-bar {
+    padding: 0.7rem 1rem;
+    background: #161b22;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+
+  .t-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .t-red { background: #ff5f56; }
+  .t-yellow { background: #ffbd2e; }
+  .t-green { background: #27c93f; }
+
+  .t-title {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-left: 0.5rem;
+  }
+
+  .terminal-body {
+    padding: 1.5rem;
+    font-size: 0.78rem;
+    line-height: 2;
+    color: #abb2bf;
+  }
+
+  .t-prompt { color: #27c93f; }
+  .t-cmd { color: #e5c07b; }
+  .t-out { color: #abb2bf; }
+  .t-warn { color: var(--accent3); font-weight: 700; }
+  .t-ok { color: #27c93f; }
+  .t-info { color: var(--accent2); }
+  .t-num { color: var(--accent); }
+
+  .t-cursor {
+    display: inline-block;
+    width: 8px; height: 14px;
+    background: var(--accent);
+    animation: blink 1.2s step-start infinite;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* ── UTILITY ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+
+  .highlight-text {
+    color: var(--accent);
+  }
+
+  .accent2-text { color: var(--accent2); }
+  .accent3-text { color: var(--accent3); }
+
+  .inline-mono {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82em;
+    background: rgba(71,200,255,0.08);
+    border: 1px solid rgba(71,200,255,0.15);
+    color: var(--accent2);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+  }
+
+  /* animate in on scroll */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">MAD PBL</a>
+  <ul class="nav-links">
+    <li><a href="#dataset">Dataset</a></li>
+    <li><a href="#roboflow">Annotation</a></li>
+    <li><a href="#training">Training</a></li>
+    <li><a href="#code">Code</a></li>
+    <li><a href="#classify">Classify</a></li>
+    <li><a href="#team">Team</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="rvce-logo-area">
+      <div class="rvce-logo-circle"><img src="https://api.learntechww.com/college_logo/logo1747830943224.webp" alt="RVCE Logo" style="width:70px;height:70px;border-radius:50%;object-fit:cover;"></div>
+      <div class="college-name">RV College of Engineering, Bengaluru</div>
+      <div class="college-dept">Department of MCA · 2025–26</div>
+    </div>
+
+    <div class="hero-badge">COMPUTER VISION · YOLOV8 · ANOMALY DETECTION</div>
+
+    <h1>Anomaly Detection<br>in <span>Pen Production</span></h1>
+
+    <p class="hero-sub">
+      A deep learning system using YOLOv8 to detect missing pen caps
+      in real-time — from a 1,572-image custom dataset to a production-ready classifier.
+    </p>
+
+    <div class="hero-meta">
+      <div class="meta-group">
+        <div class="meta-label">Students</div>
+        <div class="meta-value">
+          Serah Joyce Rasquinha<br>
+          <span style="color:var(--muted);font-size:0.8rem">1RV25MC090</span><br>
+          <br>
+          Thanushree D N<br>
+          <span style="color:var(--muted);font-size:0.8rem">1RV25MC109</span>
+        </div>
+      </div>
+      <div class="meta-divider"></div>
+      <div class="meta-group">
+        <div class="meta-label">Guided By</div>
+        <div class="meta-value">
+          Prof. Chandrani Chakravorty<br>
+          <span style="color:var(--muted);font-size:0.8rem">Assistant Professor</span><br>
+          <br>
+          Dr. Divya TL<br>
+          <span style="color:var(--muted);font-size:0.8rem">Assistant Professor</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-hint">
+    <span>SCROLL</span>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 3v10M3 9l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+</div>
+
+<!-- PIPELINE -->
+<div class="pipeline">
+  <div class="pipeline-inner">
+    <div class="section-tag">OVERVIEW</div>
+    <h2>End-to-End Pipeline</h2>
+    <p class="section-intro">From raw photographs to a deployed anomaly detection model — five tightly integrated stages.</p>
+
+    <div class="pipeline-steps">
+      <div class="pipeline-step active" onclick="highlightStep(this)">
+        <div class="step-num">01</div>
+        <div class="step-label">Dataset<br>Collection</div>
+      </div>
+      <div class="pipeline-step" onclick="highlightStep(this)">
+        <div class="step-num">02</div>
+        <div class="step-label">Roboflow<br>Annotation</div>
+      </div>
+      <div class="pipeline-step" onclick="highlightStep(this)">
+        <div class="step-num">03</div>
+        <div class="step-label">YAML<br>Config</div>
+      </div>
+      <div class="pipeline-step" onclick="highlightStep(this)">
+        <div class="step-num">04</div>
+        <div class="step-label">YOLOv8<br>Training</div>
+      </div>
+      <div class="pipeline-step" onclick="highlightStep(this)">
+        <div class="step-num">05</div>
+        <div class="step-label">Inference &amp;<br>Classification</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DATASET -->
+<section id="dataset">
+  <div class="section-tag">STAGE 01</div>
+  <h2>Creating the Dataset</h2>
+  <p class="section-intro">All 1,572 images were manually captured, covering diverse angles, lighting conditions, and pen orientations — then resized to 640×640px.</p>
+
+  <div class="stats-row reveal">
+    <div class="stat-card">
+      <div class="stat-num">1,572</div>
+      <div class="stat-label">Total images in dataset</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">640px</div>
+      <div class="stat-label">Uniform image resolution (square)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">~50/50</div>
+      <div class="stat-label">Balanced class split (capped vs uncapped)</div>
+    </div>
+  </div>
+
+  <div class="classes-grid reveal">
+    <div class="class-card">
+      <div class="class-icon uncapped">🖊️</div>
+      <div class="class-info">
+        <div class="class-badge badge-0">CLASS 0</div>
+        <h3 class="accent3-text">Uncapped</h3>
+        <p>Pen with its cap removed. This is the <strong>anomaly</strong> we want to detect. The model is optimized to be especially sensitive to this class, minimizing false negatives.</p>
+      </div>
+    </div>
+    <div class="class-card">
+      <div class="class-icon capped">🖊️</div>
+      <div class="class-info">
+        <div class="class-badge badge-1">CLASS 1</div>
+        <h3 class="accent2-text">Capped</h3>
+        <p>Pen with its cap properly on. The normal state in production. The model identifies this as the <strong>expected condition</strong> requiring no intervention.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="split-bar reveal">
+    <div class="split-label-row">
+      <span class="split-label">Train / Val Split</span>
+      <div style="display:flex;gap:1.5rem">
+        <span class="split-val train">Training 80% (~1,258 images)</span>
+        <span class="split-val val">Validation 20% (~314 images)</span>
+      </div>
+    </div>
+    <div class="split-track">
+      <div class="split-fill-train"></div>
+      <div class="split-fill-val"></div>
+    </div>
+    <p style="font-size:0.78rem;color:var(--muted);margin-top:0.75rem;font-family:'Space Mono',monospace;">
+      Stratified split via <span class="inline-mono">train_test_split(test_size=0.2, random_state=42)</span>
+    </p>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ROBOFLOW -->
+<section id="roboflow">
+  <div class="section-tag">STAGE 02</div>
+  <h2>Annotation with Roboflow</h2>
+  <p class="section-intro">Every image was annotated using Roboflow's web UI — bounding boxes drawn precisely around each pen, labeled with its class.</p>
+
+  <div class="roboflow-grid reveal">
+    <div class="rf-step">
+      <div class="rf-num">STEP 01</div>
+      <h3>Bounding Box Labeling</h3>
+      <p>For each image, a tight rectangular bounding box was drawn around the pen object. This tells the model exactly <em>where</em> to look in the frame.</p>
+      <div class="bbox-demo">
+        x_center: 0.512<br>
+        y_center: 0.489<br>
+        width: 0.381<br>
+        height: 0.124<br>
+        <span style="color:var(--accent)">→ YOLO normalized format</span>
+      </div>
+    </div>
+    <div class="rf-step">
+      <div class="rf-num">STEP 02</div>
+      <h3>Class Annotation</h3>
+      <p>Each bounding box was assigned a class label: <span class="inline-mono">0</span> for uncapped, <span class="inline-mono">1</span> for capped. Labels were exported in YOLO <code>.txt</code> format — one file per image.</p>
+      <div class="bbox-demo">
+        <span style="color:var(--accent3)">0</span> 0.512 0.489 0.381 0.124 <span style="color:var(--muted)"># uncapped</span><br>
+        <span style="color:var(--accent2)">1</span> 0.501 0.500 0.372 0.130 <span style="color:var(--muted)"># capped</span>
+      </div>
+    </div>
+    <div class="rf-step">
+      <div class="rf-num">STEP 03</div>
+      <h3>Dataset Versioning</h3>
+      <p>Roboflow manages dataset versions, allowing reproducibility and consistent export formats. The final version was exported as a YOLO-compatible zip with images + labels paired.</p>
+    </div>
+    <div class="rf-step">
+      <div class="rf-num">STEP 04</div>
+      <h3>Export &amp; Download</h3>
+      <p>Labels downloaded into <span class="inline-mono">final_dataset/labels/</span> with matching image names in <span class="inline-mono">final_dataset/images/</span>. The training script automatically pairs these.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- CODE SECTION -->
+<div class="code-section" id="code">
+  <div class="code-inner">
+    <div class="section-tag">SOURCE CODE</div>
+    <h2>Implementation</h2>
+    <p class="section-intro">Two core scripts power this system. <span class="inline-mono">train.py</span> prepares data and trains the model; <span class="inline-mono">classify.py</span> runs inference.</p>
+
+    <div class="code-tabs">
+      <button class="code-tab active" onclick="showTab('train')">train.py</button>
+      <button class="code-tab" onclick="showTab('classify')">classify.py</button>
+    </div>
+
+    <div class="code-panel active" id="tab-train">
+      <div class="code-header">
+        <div class="code-dots">
+          <div class="code-dot"></div>
+          <div class="code-dot"></div>
+          <div class="code-dot"></div>
+        </div>
+        <div class="code-filename">train.py — Data curation &amp; YOLOv8 training</div>
+      </div>
+      <pre><code class="language-python">import os
+import shutil
+import argparse
+from pathlib import Path
+from sklearn.model_selection import train_test_split
+from ultralytics import YOLO
+
+# --- Configuration ---
+# Based on your input: uncapped = 0, capped = 1
+SOURCE_DIR = "final_dataset"
+YOLO_DIR = "yolo_dataset"
+
+def setup_yolo_dataset():
+    """
+    Organizes the final_dataset into YOLO train/val format.
+    Pairs every .jpg/.jpeg/.png image with its matching .txt label file.
+    Performs an 80/20 stratified split for reproducibility.
+    """
+    print("Organizing dataset for YOLO...")
+
+    if os.path.exists(YOLO_DIR):
+        shutil.rmtree(YOLO_DIR)
+
+    for split in ['train', 'val']:
+        os.makedirs(f"{YOLO_DIR}/{split}/images", exist_ok=True)
+        os.makedirs(f"{YOLO_DIR}/{split}/labels", exist_ok=True)
+
+    img_dir = Path(f"{SOURCE_DIR}/images")
+    lbl_dir = Path(f"{SOURCE_DIR}/labels")
+
+    all_images = list(img_dir.glob("*.*"))
+    data_pairs = []
+
+    for img_path in all_images:
+        if img_path.suffix.lower() in ['.jpg', '.jpeg', '.png']:
+            lbl_path = lbl_dir / f"{img_path.stem}.txt"
+            if lbl_path.exists():
+                data_pairs.append((img_path, lbl_path))
+
+    if not data_pairs:
+        raise ValueError(f"No matching images and labels found in {SOURCE_DIR}!")
+
+    # 80% train, 20% val — random_state=42 ensures reproducibility
+    train_data, val_data = train_test_split(data_pairs, test_size=0.2, random_state=42)
+
+    def move_files(data_list, split_name):
+        for img_path, lbl_path in data_list:
+            shutil.copy(img_path, f"{YOLO_DIR}/{split_name}/images/{img_path.name}")
+            shutil.copy(lbl_path, f"{YOLO_DIR}/{split_name}/labels/{lbl_path.name}")
+
+    move_files(train_data, 'train')
+    move_files(val_data, 'val')
+    print(f"Dataset ready! Train: {len(train_data)} | Val: {len(val_data)}")
+
+
+def create_yaml():
+    """
+    Creates the YAML config file that YOLO uses to locate the dataset
+    and understand the class mapping (0=uncapped, 1=capped).
+    """
+    yaml_content = f"""
+path: {os.path.abspath(YOLO_DIR)}
+train: train/images
+val: val/images
+
+names:
+  0: uncapped
+  1: capped
+"""
+    with open("pen_data.yaml", "w") as f:
+        f.write(yaml_content.strip())
+    print("Created pen_data.yaml")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--device', type=str, default='cpu')
+    parser.add_argument('--epochs', type=int, default=100)
+    args = parser.parse_args()
+
+    setup_yolo_dataset()
+    create_yaml()
+
+    print("\n--- Initializing YOLOv8 Nano ---")
+    model = YOLO("yolov8n.pt")  # Nano variant: fastest, lightest
+
+    results = model.train(
+        data="pen_data.yaml",
+        epochs=args.epochs,
+        imgsz=640,
+        batch=16,
+        device='cpu' if args.device == 'cpu' else 0,
+        name="pen_cap_model",
+        patience=25,          # Stop early if no improvement for 25 epochs
+        lr0=0.01,             # Initial learning rate
+        augment=True,         # Random flips, crops, color jitter, etc.
+        label_smoothing=0.1,  # Soft targets reduce overconfidence
+        cls=1.5,              # Higher weight on classification loss
+        exist_ok=True
+    )</code></pre>
+    </div>
+
+    <div class="code-panel" id="tab-classify">
+      <div class="code-header">
+        <div class="code-dots">
+          <div class="code-dot"></div>
+          <div class="code-dot"></div>
+          <div class="code-dot"></div>
+        </div>
+        <div class="code-filename">classify.py — Inference &amp; detection</div>
+      </div>
+      <pre><code class="language-python">import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"   # Force CPU inference
+
+import sys
+import argparse
+from ultralytics import YOLO
+
+
+def detect_pen_cap(image_path, show_image=True):
+    """
+    Loads the best trained weights and runs inference on a single image.
+    
+    A deliberately low confidence threshold (0.15) is used to minimize
+    false negatives — in production, missing a cap (false negative) is
+    far more costly than a false alarm (false positive).
+    """
+    model_path = "runs/detect/pen_cap_model2/weights/best.pt"
+
+    if not os.path.exists(model_path):
+        print(f"\n[ERROR]: Could not find the trained model at {model_path}.")
+        return
+
+    try:
+        model = YOLO(model_path)
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return
+
+    print(f"\nAnalyzing image: {image_path}...")
+
+    # conf=0.15 → very sensitive; catches borderline uncapped cases
+    # iou=0.45  → standard overlap threshold for non-max suppression
+    results = model(image_path, conf=0.15, iou=0.45)
+
+    for result in results:
+        boxes = result.boxes
+
+        if len(boxes) == 0:
+            print(">>> Result: No pens detected.")
+            continue
+
+        print(f">>> Found {len(boxes)} object(s):")
+        for box in boxes:
+            class_id   = int(box.cls.item())
+            confidence = float(box.conf.item())
+            class_name = model.names[class_id]
+
+            # Explicitly flag uncapped pens as warnings
+            status = "WARNING: UNCAPPED" if class_id == 0 else "CAPPED"
+            print(f"    - {status} (Confidence: {confidence * 100:.2f}%)")
+
+        if show_image:
+            result.show()   # Opens annotated image window
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Test Pen Cap Detector on an image")
+    parser.add_argument('--image', type=str, required=False)
+    parser.add_argument('--no-show', action='store_true')
+
+    args = parser.parse_args()
+    img_to_test = args.image
+
+    if not img_to_test:
+        img_to_test = input("Enter image path: ").strip().replace('"', '').replace("'", "")
+
+    if os.path.exists(img_to_test):
+        detect_pen_cap(img_to_test, show_image=not args.no_show)
+    else:
+        print(f"Error: '{img_to_test}' not found.")</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- TRAINING -->
+<section id="training">
+  <div class="section-tag">STAGE 03 + 04</div>
+  <h2>Training the Model</h2>
+  <p class="section-intro">YOLOv8 Nano was chosen for its balance of speed and accuracy on CPU. The training pipeline uses three advanced reliability features.</p>
+
+  <div class="training-grid reveal">
+    <div class="training-card">
+      <h3>🧠 Model: YOLOv8 Nano</h3>
+      <p>The smallest and fastest YOLOv8 variant. Designed to run efficiently even on CPU hardware — critical for deployment in factory environments without dedicated GPUs.</p>
+      <div class="param-list">
+        <div class="param-row"><span class="param-key">architecture</span><span class="param-val">yolov8n.pt</span></div>
+        <div class="param-row"><span class="param-key">imgsz</span><span class="param-val">640 × 640</span></div>
+        <div class="param-row"><span class="param-key">epochs</span><span class="param-val">100</span></div>
+        <div class="param-row"><span class="param-key">batch</span><span class="param-val">16</span></div>
+        <div class="param-row"><span class="param-key">lr0</span><span class="param-val">0.01</span></div>
+      </div>
+    </div>
+    <div class="training-card">
+      <h3>⚙️ YAML Configuration</h3>
+      <p>A custom <span class="inline-mono">pen_data.yaml</span> file is auto-generated by <span class="inline-mono">train.py</span>. It maps the dataset paths and defines the class names so YOLO knows what to detect.</p>
+      <div class="yaml-block">
+        <div class="yaml-header"><span>pen_data.yaml</span> · auto-generated</div>
+        <pre style="padding:1rem;font-family:'Space Mono',monospace;font-size:0.72rem;background:transparent;color:#abb2bf;line-height:1.9;"><code style="background:transparent;padding:0;font-size:inherit"><span style="color:#e06c75">path</span><span style="color:#abb2bf">: /absolute/path/to/yolo_dataset</span>
+<span style="color:#e06c75">train</span><span style="color:#abb2bf">: train/images</span>
+<span style="color:#e06c75">val</span><span style="color:#abb2bf">: val/images</span>
+
+<span style="color:#e06c75">names</span><span style="color:#abb2bf">:</span>
+  <span style="color:#e5c07b">0</span><span style="color:#abb2bf">: </span><span style="color:#98c379">uncapped</span>
+  <span style="color:#e5c07b">1</span><span style="color:#abb2bf">: </span><span style="color:#98c379">capped</span></code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Architecture flow -->
+  <div class="arch-box reveal">
+    <div class="section-tag" style="margin-bottom:0.5rem">MODEL ARCHITECTURE FLOW</div>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:0">How an image travels through YOLOv8 during inference</p>
+    <div class="arch-flow">
+      <div class="arch-node highlight">640×640 Input</div>
+      <span class="arch-arrow">→</span>
+      <div class="arch-node">Backbone (CSP)</div>
+      <span class="arch-arrow">→</span>
+      <div class="arch-node">Feature Pyramid (FPN+PAN)</div>
+      <span class="arch-arrow">→</span>
+      <div class="arch-node">Detection Head</div>
+      <span class="arch-arrow">→</span>
+      <div class="arch-node">NMS (IoU 0.45)</div>
+      <span class="arch-arrow">→</span>
+      <div class="arch-node highlight">Bounding Box + Class</div>
+    </div>
+  </div>
+
+  <!-- Safety features -->
+  <div style="margin-top:3rem">
+    <div class="section-tag">RELIABILITY FEATURES</div>
+    <h2>Ensuring Real-World Accuracy</h2>
+    <p class="section-intro">Three techniques prevent the model from memorizing training data and ensure it generalizes to unseen factory conditions.</p>
+
+    <div class="safety-cards reveal">
+      <div class="safety-card">
+        <div class="safety-icon">🎨</div>
+        <h3>Visual Augmentation</h3>
+        <p>Training images are dynamically transformed — random flips, brightness shifts, color jitter, and cropping. This forces the model to recognize pens in varied lighting and orientations, mimicking a real factory line camera.</p>
+        <div style="margin-top:1rem;font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--muted);">
+          <span style="color:var(--accent)">augment=True</span> in model.train()
+        </div>
+      </div>
+      <div class="safety-card">
+        <div class="safety-icon">⏱️</div>
+        <h3>Early Stopping</h3>
+        <p>If validation metrics stop improving for 25 consecutive epochs (<span class="inline-mono">patience=25</span>), training halts automatically. This prevents over-fitting — where a model scores perfectly on training data but fails on new images.</p>
+        <div style="margin-top:1rem;font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--muted);">
+          <span style="color:var(--accent)">patience=25</span> in model.train()
+        </div>
+      </div>
+      <div class="safety-card">
+        <div class="safety-icon">🎯</div>
+        <h3>Label Smoothing</h3>
+        <p>Instead of hard 0/1 targets, the model trains against softened targets (e.g. 0.05 / 0.95). This prevents over-confidence and helps the model say "I'm 87% sure" rather than "100% sure" — a more reliable industrial signal.</p>
+        <div style="margin-top:1rem;font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--muted);">
+          <span style="color:var(--accent)">label_smoothing=0.1</span> in model.train()
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- CLASSIFY -->
+<section id="classify">
+  <div class="section-tag">STAGE 05</div>
+  <h2>Classification &amp; Inference</h2>
+  <p class="section-intro">The trained model is deployed via <span class="inline-mono">classify.py</span>. A low confidence threshold minimizes the chance of missing an uncapped pen.</p>
+
+  <div class="threshold-viz reveal">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="section-tag" style="margin-bottom:0.25rem">CONFIDENCE THRESHOLD</div>
+        <p style="color:var(--muted);font-size:0.85rem">Why 0.15? In production, a missed uncapped pen (false negative) causes product defects. A false alarm (false positive) only costs a re-check. So the threshold is intentionally low.</p>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:'Space Mono',monospace;font-size:2rem;font-weight:700;color:var(--accent)">0.15</div>
+        <div style="font-size:0.75rem;color:var(--muted)">conf threshold</div>
+      </div>
+    </div>
+    <div class="threshold-track" style="margin-top:1.5rem">
+      <div class="threshold-fill"></div>
+      <div class="threshold-marker"></div>
+      <div class="threshold-label">conf=0.15</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--muted)">
+      <span>0.0 — Detect everything</span>
+      <span>0.5 — Standard threshold</span>
+      <span>1.0 — Certain only</span>
+    </div>
+  </div>
+
+  <div class="classify-flow reveal">
+    <div class="flow-step">
+      <div class="flow-icon">📁</div>
+      <div class="flow-content">
+        <h3>Load Trained Weights</h3>
+        <p>The best checkpoint saved during training at <span class="inline-mono">runs/detect/pen_cap_model2/weights/best.pt</span> is loaded. "Best" is selected by YOLO based on highest validation mAP.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🖼️</div>
+      <div class="flow-content">
+        <h3>Input Image</h3>
+        <p>Accepts any image path via CLI (<span class="inline-mono">--image path/to/img.jpg</span>) or interactive prompt. The image is internally resized to 640×640 for inference.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🔍</div>
+      <div class="flow-content">
+        <h3>Run Detection</h3>
+        <p>YOLO scans the image with <span class="inline-mono">conf=0.15</span> and <span class="inline-mono">iou=0.45</span>. All detected pens — along with their class IDs and confidence scores — are returned as bounding box objects.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">⚠️</div>
+      <div class="flow-content">
+        <h3>Flag Anomalies</h3>
+        <p>If <span class="inline-mono">class_id == 0</span> (uncapped), the output is tagged as <span class="accent3-text"><strong>WARNING: UNCAPPED</strong></span>. If <span class="inline-mono">class_id == 1</span>, it's logged as <span style="color:#27c93f"><strong>CAPPED</strong></span>. The annotated image can be displayed with bounding boxes.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Output examples -->
+  <div class="output-row reveal">
+    <div class="output-card">
+      <div class="output-header">
+        <div class="output-dot-warn"></div>
+        Terminal Output — Anomaly Detected
+      </div>
+      <div class="output-body">
+        <span class="out-dim">$ python classify.py --image pen_sample_1.jpg</span><br>
+        <span class="out-info">Analyzing image: pen_sample_1.jpg...</span><br>
+        <span class="out-dim">>>> Found 2 object(s):</span><br>
+        <span class="out-warn">    - WARNING: UNCAPPED</span> <span class="out-conf">(Confidence: 91.47%)</span><br>
+        <span class="out-ok">    - CAPPED</span> <span class="out-conf">(Confidence: 87.23%)</span>
+      </div>
+    </div>
+    <div class="output-card">
+      <div class="output-header">
+        <div class="output-dot-ok"></div>
+        Terminal Output — All Clear
+      </div>
+      <div class="output-body">
+        <span class="out-dim">$ python classify.py --image factory_batch.jpg</span><br>
+        <span class="out-info">Analyzing image: factory_batch.jpg...</span><br>
+        <span class="out-dim">>>> Found 3 object(s):</span><br>
+        <span class="out-ok">    - CAPPED</span> <span class="out-conf">(Confidence: 94.12%)</span><br>
+        <span class="out-ok">    - CAPPED</span> <span class="out-conf">(Confidence: 88.56%)</span><br>
+        <span class="out-ok">    - CAPPED</span> <span class="out-conf">(Confidence: 92.08%)</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO TERMINAL -->
+<div class="demo-section" id="demo">
+  <div class="demo-inner">
+    <div class="section-tag">INTERACTIVE DEMO</div>
+    <h2>See It In Action</h2>
+    <p class="section-intro">A simulated walkthrough of the full pipeline — from training to detection output.</p>
+
+    <div class="demo-terminal">
+      <div class="terminal-bar">
+        <div class="t-dot t-red"></div>
+        <div class="t-dot t-yellow"></div>
+        <div class="t-dot t-green"></div>
+        <span class="t-title">bash — pen_cap_detector</span>
+      </div>
+      <div class="terminal-body" id="terminal-output">
+        <div><span class="t-prompt">$</span> <span class="t-cmd">python train.py --epochs 100 --device cpu</span></div>
+        <div id="terminal-lines" style="display:none">
+          <div><span class="t-info">Organizing dataset for YOLO...</span></div>
+          <div><span class="t-out">Dataset ready! Train: </span><span class="t-num">1257</span><span class="t-out"> | Val: </span><span class="t-num">315</span></div>
+          <div><span class="t-info">Created pen_data.yaml</span></div>
+          <div><span class="t-out">--- Initializing YOLOv8 Nano ---</span></div>
+          <div><span class="t-out">Downloading yolov8n.pt... ████████████ 100%</span></div>
+          <div><span class="t-out">Epoch 1/100: box=2.341, cls=1.876, dfl=1.023</span></div>
+          <div><span class="t-out">Epoch 10/100: box=1.102, cls=0.987, dfl=0.891</span></div>
+          <div><span class="t-out">Epoch 25/100: box=0.723, cls=0.612, dfl=0.741</span></div>
+          <div><span class="t-out">Epoch 50/100: box=0.512, cls=0.434, dfl=0.623</span></div>
+          <div><span class="t-out">Epoch 75/100: box=0.389, cls=0.321, dfl=0.551</span></div>
+          <div><span class="t-ok">Epoch 100/100 complete.</span></div>
+          <div><span class="t-ok">Best weights saved → runs/detect/pen_cap_model2/weights/best.pt</span></div>
+          <div>&nbsp;</div>
+          <div><span class="t-prompt">$</span> <span class="t-cmd">python classify.py --image test_pen.jpg</span></div>
+          <div><span class="t-info">Analyzing image: test_pen.jpg...</span></div>
+          <div><span class="t-out">&gt;&gt;&gt; Found 1 object(s):</span></div>
+          <div><span class="t-warn">    - WARNING: UNCAPPED (Confidence: 89.34%)</span></div>
+          <div>&nbsp;</div>
+          <div><span class="t-prompt">$</span> <span class="t-cursor"></span></div>
+        </div>
+        <div id="run-btn-wrap">
+          <br><button onclick="runDemo()" style="background:var(--accent);color:var(--bg);border:none;padding:0.6rem 1.5rem;border-radius:6px;font-family:'Space Mono',monospace;font-size:0.78rem;cursor:pointer;font-weight:700;letter-spacing:0.05em;margin-top:0.5rem;transition:opacity 0.2s" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1">▶ RUN SIMULATION</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TEAM -->
+<div class="team-section" id="team">
+  <div class="section-tag" style="justify-content:center">THE TEAM</div>
+  <h2>Project Contributors</h2>
+
+  <div class="team-grid">
+    <div class="team-card">
+      <div class="team-avatar">SJ</div>
+      <div class="team-name">Serah Joyce Rasquinha</div>
+      <div class="team-usn">1RV25MC090</div>
+    </div>
+    <div class="team-card">
+      <div class="team-avatar">TD</div>
+      <div class="team-name">Thanushree D N</div>
+      <div class="team-usn">1RV25MC109</div>
+    </div>
+  </div>
+
+  <div style="margin-top:3rem">
+    <div class="section-tag" style="justify-content:center;margin-bottom:1.5rem">UNDER THE GUIDANCE OF</div>
+    <div class="guides-row">
+      <div class="guide-card">
+        <div class="guide-icon">👩‍🏫</div>
+        <div>
+          <div class="guide-name">Prof. Chandrani Chakravorty</div>
+          <div class="guide-role">Assistant Professor · Dept. of MCA, RVCE</div>
+        </div>
+      </div>
+      <div class="guide-card">
+        <div class="guide-icon">👩‍🔬</div>
+        <div>
+          <div class="guide-name">Dr. Divya TL</div>
+          <div class="guide-role">Assistant Professor · Dept. of MCA, RVCE</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div style="margin-bottom:0.5rem">
+    <strong>RVCE</strong> · RV College of Engineering · Department of MCA · Bengaluru, Karnataka
+  </div>
+  <div>Anomaly Detection in Pen Production Industry · <strong>14th April 2026</strong></div>
+</footer>
+
+<script>
+  // Syntax highlight
+  hljs.highlightAll();
+
+  // Code tabs
+  function showTab(name) {
+    document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.code-panel').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  // Pipeline step highlight
+  function highlightStep(el) {
+    document.querySelectorAll('.pipeline-step').forEach(s => s.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // Demo terminal animation
+  function runDemo() {
+    document.getElementById('run-btn-wrap').style.display = 'none';
+    const lines = document.getElementById('terminal-lines');
+    lines.style.display = 'block';
+    const children = Array.from(lines.children);
+    children.forEach(c => c.style.opacity = '0');
+
+    let i = 0;
+    function showNext() {
+      if (i < children.length) {
+        children[i].style.transition = 'opacity 0.2s';
+        children[i].style.opacity = '1';
+        i++;
+        setTimeout(showNext, 120);
+      }
+    }
+    setTimeout(showNext, 300);
+  }
+
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) e.target.classList.add('visible');
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(r => observer.observe(r));
+</script>
+</body>
+</html>
